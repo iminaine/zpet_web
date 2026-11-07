@@ -18,6 +18,10 @@ class VPetManager {
       await this.port.open({ baudRate: 115200 });
       this.isConnected = true;
       
+      // Wait for device to stabilize after opening serial connection
+      // (ESP32 reboots on DTR/RTS signal change, needs time to boot)
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
       // Get device ID (use serial number)
       await this.captureDeviceId();
       
@@ -340,8 +344,10 @@ class VPetManager {
   async disconnect() {
     try {
       if (this.port) {
+        // Close gracefully without forcing anything
         await this.port.close();
         this.isConnected = false;
+        this.port = null;
         
         await this.logAnalytics('device_disconnected', {
           deviceId: this.deviceId
@@ -349,6 +355,9 @@ class VPetManager {
       }
     } catch (error) {
       console.error('Disconnect error:', error);
+      // Still mark as disconnected even if close() fails
+      this.isConnected = false;
+      this.port = null;
     }
   }
 }
