@@ -359,7 +359,7 @@ class VPetUIManager {
     }
 
     const confirmed = window.confirm(
-      'This will update your VPet firmware to ' + this.firmware.version + '.\n\n' +
+      'This will update your ZPet firmware to ' + this.firmware.version + '.\n\n' +
       'DO NOT disconnect your device during the update!\n\n' +
       'This process takes 2-3 minutes. Continue?'
     );
