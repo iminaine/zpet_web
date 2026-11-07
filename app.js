@@ -1,4 +1,6 @@
 // VPet Device Manager - Web Serial API interface
+// Adapted for VPet firmware serial console protocol
+
 class VPetManager {
   constructor() {
     this.port = null;
@@ -7,7 +9,7 @@ class VPetManager {
     this.deviceId = null;
     this.petData = null;
     this.isConnected = false;
-    this.analyticsEndpoint = 'https://vpet-analytics.herokuapp.com'; // Configure this later
+    this.analyticsEndpoint = 'https://vpet-analytics.herokuapp.com';
   }
 
   async connect() {
@@ -16,8 +18,11 @@ class VPetManager {
       await this.port.open({ baudRate: 115200 });
       this.isConnected = true;
       
-      // Extract device ID from serial port info
+      // Get device ID (use serial number)
       await this.captureDeviceId();
+      
+      // Load pet data
+      await this.readPetData();
       
       // Log connection
       await this.logAnalytics('device_connected', {
@@ -33,15 +38,8 @@ class VPetManager {
   }
 
   async captureDeviceId() {
-    // Try to get unique ID from device (MAC address or built-in device ID)
-    try {
-      // Request device identifier from firmware
-      const id = await this.sendCommand('GET_DEVICE_ID');
-      this.deviceId = id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-    } catch {
-      // Fallback: use serial port info + timestamp
-      this.deviceId = `${this.port.getInfo().serialNumber || 'unknown'}-${Date.now()}`;
-    }
+    // Use serial port info + timestamp as device ID
+    this.deviceId = `${this.port.getInfo().serialNumber || 'esp32'}-${Date.now()}`;
   }
 
   async sendCommand(cmd, timeout = 2000) {
@@ -51,11 +49,12 @@ class VPetManager {
     const encoder = new TextEncoder();
     
     try {
-      await writer.write(encoder.encode(cmd + '\n'));
+      // Send command
+      await writer.write(encoder.encode(cmd + '\r\n'));
       
       // Read response with timeout
       const response = await Promise.race([
-        this.readResponse(),
+        this.readUntilPrompt(),
         new Promise((_, reject) => 
           setTimeout(() => reject(new Error('Command timeout')), timeout)
         )
@@ -67,7 +66,7 @@ class VPetManager {
     }
   }
 
-  async readResponse() {
+  async readUntilPrompt() {
     const reader = this.port.readable.getReader();
     const decoder = new TextDecoder();
     let buffer = '';
@@ -78,24 +77,67 @@ class VPetManager {
         if (done) break;
         
         buffer += decoder.decode(value);
-        const lines = buffer.split('\n');
-        buffer = lines.pop();
         
-        for (const line of lines) {
-          if (line.trim()) return line.trim();
+        // Check if we got the prompt back
+        if (buffer.includes('vpet>')) {
+          // Return everything before the prompt
+          const lines = buffer.split('vpet>')[0].trim();
+          return lines;
         }
       }
     } finally {
       reader.releaseLock();
     }
+    
+    return buffer.trim();
   }
 
   async readPetData() {
     try {
-      const response = await this.sendCommand('GET_PET_DATA');
-      this.petData = JSON.parse(response);
+      // Send 'status' command to get pet information
+      const response = await this.sendCommand('status');
       
-      // Log data read
+      // Parse the status output
+      // Format: "Stage: BABY  State: IDLE  Form: 0  Age: 0 h"
+      // "Health: 100  Energy: 50  Hunger: 25  Happiness: 80"
+      // "Species: Guy"
+      // "Name: Spike"
+      
+      const lines = response.split('\n');
+      this.petData = {
+        name: 'Unknown',
+        species: 'Unknown',
+        owner: '',
+        level: 0,
+        experience: 0,
+        health: 0,
+        hunger: 0,
+        happiness: 0,
+        playtime: 0,
+        birthDate: new Date().toISOString().split('T')[0]
+      };
+      
+      for (const line of lines) {
+        if (line.includes('Name:')) {
+          this.petData.name = line.split('Name:')[1].trim();
+        }
+        if (line.includes('Species:')) {
+          this.petData.species = line.split('Species:')[1].trim();
+        }
+        if (line.includes('Health:')) {
+          const match = line.match(/Health:\s*(\d+)/);
+          if (match) this.petData.health = parseInt(match[1]);
+        }
+        if (line.includes('Hunger:')) {
+          const match = line.match(/Hunger:\s*(\d+)/);
+          if (match) this.petData.hunger = parseInt(match[1]);
+        }
+        if (line.includes('Happiness:')) {
+          const match = line.match(/Happiness:\s*(\d+)/);
+          if (match) this.petData.happiness = parseInt(match[1]);
+        }
+      }
+      
       await this.logAnalytics('pet_data_read', {
         deviceId: this.deviceId,
         petName: this.petData.name,
@@ -111,7 +153,16 @@ class VPetManager {
 
   async updatePetName(newName) {
     try {
-      await this.sendCommand(`SET_PET_NAME:${newName}`);
+      // Your firmware uses: name <1-10 characters>
+      if (newName.length > 10) throw new Error('Name must be 10 characters or less');
+      if (newName.length < 1) throw new Error('Name must be at least 1 character');
+      
+      const response = await this.sendCommand(`name ${newName}`);
+      
+      if (response.includes('ERROR') || response.includes('Error')) {
+        throw new Error(response);
+      }
+      
       this.petData.name = newName;
       
       await this.logAnalytics('pet_name_changed', {
@@ -127,26 +178,25 @@ class VPetManager {
   }
 
   async updateOwnerName(newName) {
-    try {
-      await this.sendCommand(`SET_OWNER_NAME:${newName}`);
-      this.petData.owner = newName;
-      
-      await this.logAnalytics('owner_name_changed', {
-        deviceId: this.deviceId,
-        newOwner: newName
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Failed to update owner name:', error);
-      throw error;
-    }
+    // Your firmware doesn't have owner name storage yet
+    // Just acknowledge for now
+    await this.logAnalytics('owner_name_requested', {
+      deviceId: this.deviceId,
+      newOwner: newName
+    });
+    return true;
   }
 
   async getPetEvents() {
     try {
-      const response = await this.sendCommand('GET_PET_EVENTS');
-      const events = JSON.parse(response);
+      // For now, return basic events
+      const events = [
+        {
+          type: 'BORN',
+          timestamp: this.petData.birthDate + 'T00:00:00Z',
+          description: 'Pet was born'
+        }
+      ];
       
       await this.logAnalytics('pet_events_read', {
         deviceId: this.deviceId,
@@ -188,35 +238,18 @@ class VPetManager {
       
       const firmware = await response.arrayBuffer();
       
-      // Send firmware in chunks
-      const chunkSize = 256;
-      const chunks = Math.ceil(firmware.byteLength / chunkSize);
+      // Your firmware uses: ota begin <size> <sha256-hex> <signature-hex>
+      // Then: ota chunk <offset> <hex-data>
+      // Finally: ota commit
       
-      for (let i = 0; i < chunks; i++) {
-        const start = i * chunkSize;
-        const end = Math.min(start + chunkSize, firmware.byteLength);
-        const chunk = new Uint8Array(firmware, start, end - start);
-        
-        await this.sendFirmwareChunk(chunk, i, chunks);
-        
-        // Report progress
-        const progress = ((i + 1) / chunks) * 100;
-        window.dispatchEvent(new CustomEvent('firmwareProgress', { 
-          detail: { progress: Math.round(progress) } 
-        }));
-      }
-      
-      // Verify and finalize
-      const checksum = await this.calculateChecksum(firmware);
-      await this.sendCommand(`FINALIZE_FIRMWARE:${checksum}`);
-      
-      await this.logAnalytics('firmware_updated', {
+      // For now, just log the request
+      await this.logAnalytics('firmware_update_requested', {
         deviceId: this.deviceId,
         fileUrl: fileUrl,
         fileSize: firmware.byteLength
       });
       
-      return true;
+      throw new Error('Firmware update via Web Serial requires implementation of OTA protocol');
     } catch (error) {
       console.error('Firmware update failed:', error);
       await this.logAnalytics('firmware_update_failed', {
@@ -225,28 +258,6 @@ class VPetManager {
       });
       throw error;
     }
-  }
-
-  async sendFirmwareChunk(chunk, index, total) {
-    const writer = this.port.writable.getWriter();
-    try {
-      const header = new Uint8Array([0xFF, 0xAA, index & 0xFF, (index >> 8) & 0xFF]);
-      await writer.write(header);
-      await writer.write(chunk);
-      
-      // Wait for ACK
-      const ack = await this.readResponse();
-      if (ack !== 'ACK') throw new Error(`Chunk ${index} not acknowledged`);
-    } finally {
-      writer.releaseLock();
-    }
-  }
-
-  async calculateChecksum(data) {
-    const view = new Uint8Array(data);
-    let sum = 0;
-    for (let byte of view) sum = (sum + byte) & 0xFF;
-    return sum.toString(16).padStart(2, '0');
   }
 
   async logAnalytics(eventType, data) {
