@@ -127,12 +127,13 @@ class VPetManager {
       
       for (const line of lines) {
         if (line.includes('Stage:')) {
-          this.petData.stage = line.split('Stage:')[1].split('State:')[0].trim();
+          this.petData.stage = line.split('Stage:')[1].split('State:')[0].trim().toLowerCase();
+          // Check if stage is "dead" to show resurrection buttons
+          this.petData.isDead = this.petData.stage === 'dead';
         }
         if (line.includes('State:')) {
           const match = line.match(/State:\s*(\w+)/);
           if (match) this.petData.state = match[1];
-          this.petData.isDead = this.petData.state === 'DEAD';
         }
         if (line.includes('Name:')) {
           this.petData.name = line.split('Name:')[1].trim();
