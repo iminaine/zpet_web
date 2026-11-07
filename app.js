@@ -114,10 +114,21 @@ class VPetManager {
         hunger: 0,
         happiness: 0,
         playtime: 0,
+        stage: 'UNKNOWN',
+        state: 'UNKNOWN',
+        isDead: false,
         birthDate: new Date().toISOString().split('T')[0]
       };
       
       for (const line of lines) {
+        if (line.includes('Stage:')) {
+          this.petData.stage = line.split('Stage:')[1].split('State:')[0].trim();
+        }
+        if (line.includes('State:')) {
+          const match = line.match(/State:\s*(\w+)/);
+          if (match) this.petData.state = match[1];
+          this.petData.isDead = this.petData.state === 'DEAD';
+        }
         if (line.includes('Name:')) {
           this.petData.name = line.split('Name:')[1].trim();
         }
@@ -167,6 +178,57 @@ class VPetManager {
       
       await this.logAnalytics('pet_name_changed', {
         deviceId: this.deviceId,
+        newName: newName
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to update pet name:', error);
+      throw error;
+    }
+  }
+
+  async revivePet() {
+    try {
+      const response = await this.sendCommand('revive');
+      
+      if (response.includes('ERROR') || response.includes('Error')) {
+        throw new Error(response);
+      }
+      
+      this.petData.isDead = false;
+      this.petData.state = 'IDLE';
+      
+      await this.logAnalytics('pet_revived', {
+        deviceId: this.deviceId,
+        petName: this.petData.name
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to revive pet:', error);
+      throw error;
+    }
+  }
+
+  async resetPet() {
+    try {
+      const response = await this.sendCommand('reset CONFIRM');
+      
+      if (response.includes('ERROR') || response.includes('Error')) {
+        throw new Error(response);
+      }
+      
+      await this.logAnalytics('pet_reset', {
+        deviceId: this.deviceId,
+        petName: this.petData.name
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to reset pet:', error);
+      throw error;
+    }
         newName: newName
       });
       

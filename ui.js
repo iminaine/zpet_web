@@ -25,6 +25,10 @@ class VPetUIManager {
     document.getElementById('restoreBtn').addEventListener('click', () => this.handleRestore());
     document.getElementById('restoreFile').addEventListener('change', (e) => this.handleRestoreFile(e));
 
+    // Pet Resurrection
+    document.getElementById('reviveBtn').addEventListener('click', () => this.handleRevive());
+    document.getElementById('resetBtn').addEventListener('click', () => this.handleReset());
+
     // Events
     document.getElementById('refreshEvents').addEventListener('click', () => this.handleRefreshEvents());
 
@@ -36,8 +40,7 @@ class VPetUIManager {
     // Listen for firmware progress updates
     window.addEventListener('firmwareProgress', (e) => this.updateProgress(e.detail.progress));
 
-    // Populate firmware versions
-    this.populateFirmwareVersions();
+    // Do NOT populate firmware versions (no firmwares available yet)
   }
 
   async handleConnect() {
@@ -108,6 +111,14 @@ class VPetUIManager {
       document.getElementById('petNameInput').value = data.name || '';
       document.getElementById('ownerNameInput').value = data.owner || '';
       
+      // Show/hide resurrection panel based on pet state
+      const deadPanel = document.getElementById('petDeadPanel');
+      if (data.isDead) {
+        deadPanel.hidden = false;
+      } else {
+        deadPanel.hidden = true;
+      }
+      
       this.showStatus('detailStatus', `✓ Pet data loaded`, 'success');
     } catch (error) {
       this.showStatus('detailStatus', `Error: ${error.message}`, 'error');
@@ -175,6 +186,48 @@ class VPetUIManager {
       this.showStatus('ownerNameStatus', `Error: ${error.message}`, 'error');
     } finally {
       document.getElementById('saveOwnerName').disabled = false;
+    }
+  }
+
+  async handleRevive() {
+    try {
+      document.getElementById('reviveBtn').disabled = true;
+      document.getElementById('reviveBtn').textContent = 'Reviving...';
+      
+      await this.manager.revivePet();
+      this.showStatus('resurrectStatus', `✓ Your pet has been revived!`, 'success');
+      
+      // Reload pet details
+      setTimeout(() => this.loadPetDetails(), 1000);
+    } catch (error) {
+      this.showStatus('resurrectStatus', `Error: ${error.message}`, 'error');
+    } finally {
+      document.getElementById('reviveBtn').disabled = false;
+      document.getElementById('reviveBtn').textContent = '💚 Revive';
+    }
+  }
+
+  async handleReset() {
+    const confirmed = window.confirm(
+      'Are you sure you want to reset your pet? This will create a brand new pet and cannot be undone.'
+    );
+    
+    if (!confirmed) return;
+    
+    try {
+      document.getElementById('resetBtn').disabled = true;
+      document.getElementById('resetBtn').textContent = 'Resetting...';
+      
+      await this.manager.resetPet();
+      this.showStatus('resurrectStatus', `✓ Your pet has been reset. A new pet awaits!`, 'success');
+      
+      // Reload pet details
+      setTimeout(() => this.loadPetDetails(), 1000);
+    } catch (error) {
+      this.showStatus('resurrectStatus', `Error: ${error.message}`, 'error');
+    } finally {
+      document.getElementById('resetBtn').disabled = false;
+      document.getElementById('resetBtn').textContent = '🔄 Reset';
     }
   }
 

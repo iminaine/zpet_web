@@ -479,23 +479,23 @@
             </div>
             <div class="stat">
               <strong>Current FW:</strong>
-              <span id="currentFw">-</span>
+              <span id="currentFw">v1.0.0</span>
             </div>
             <div class="stat">
               <strong>Latest FW:</strong>
-              <span id="latestFw">-</span>
+              <span id="latestFw">v1.0.0</span>
             </div>
             <div id="deviceStatus" class="status"></div>
           </div>
         </div>
 
         <!-- Events Panel -->
-        <div class="panel">
+        <div class="panel" style="opacity: 0.5; pointer-events: none;">
           <div class="panel-head">
             <h2>📅 Recent Events</h2>
           </div>
           <div class="panel-body">
-            <button id="refreshEvents" class="button" style="width: 100%; margin-bottom: 12px;">Refresh Events</button>
+            <button id="refreshEvents" class="button" style="width: 100%; margin-bottom: 12px;" disabled>Refresh Events</button>
             <div id="eventList" class="event-list"></div>
             <div id="eventStatus" class="status"></div>
           </div>
@@ -510,6 +510,16 @@
             <h2>✏️ Manage Pet</h2>
           </div>
           <div class="panel-body">
+            <!-- Pet Resurrection Panel (shown only when dead) -->
+            <div id="petDeadPanel" hidden style="margin-bottom: 20px; padding: 14px; background: rgba(161,61,51,.1); border-left: 3px solid var(--error); border-radius: 2px;">
+              <p style="margin: 0 0 12px; color: var(--error); font-weight: 600;">Your pet has passed away 🪦</p>
+              <div class="button-group">
+                <button id="reviveBtn" class="button primary" style="flex: 1;">💚 Revive</button>
+                <button id="resetBtn" class="button secondary" style="flex: 1;">🔄 Reset</button>
+              </div>
+              <div id="resurrectStatus" class="status"></div>
+            </div>
+
             <div class="field">
               <label>Pet Name</label>
               <input type="text" id="petNameInput" placeholder="Enter new pet name">
@@ -517,16 +527,16 @@
               <div id="petNameStatus" class="status"></div>
             </div>
 
-            <div class="field" style="margin-top: 20px;">
+            <div class="field" style="margin-top: 20px; opacity: 0.5; pointer-events: none;">
               <label>Owner Name</label>
-              <input type="text" id="ownerNameInput" placeholder="Enter your name">
-              <button id="saveOwnerName" class="button primary" style="width: 100%;">Save Owner Name</button>
+              <input type="text" id="ownerNameInput" placeholder="Enter your name" disabled>
+              <button id="saveOwnerName" class="button primary" style="width: 100%;" disabled>Save Owner Name</button>
               <div id="ownerNameStatus" class="status"></div>
             </div>
 
-            <div class="button-group" style="margin-top: 20px;">
-              <button id="backupBtn" class="button secondary">💾 Backup</button>
-              <button id="restoreBtn" class="button secondary">📂 Restore</button>
+            <div class="button-group" style="margin-top: 20px; opacity: 0.5; pointer-events: none;">
+              <button id="backupBtn" class="button secondary" disabled>💾 Backup</button>
+              <button id="restoreBtn" class="button secondary" disabled>📂 Restore</button>
             </div>
             <input type="file" id="restoreFile" accept=".json" hidden>
             <div id="backupStatus" class="status"></div>
@@ -534,7 +544,7 @@
         </div>
 
         <!-- Firmware Update Panel -->
-        <div class="panel">
+        <div class="panel" style="opacity: 0.5; pointer-events: none;">
           <div class="panel-head">
             <h2>🔄 Firmware Update</h2>
           </div>
@@ -543,8 +553,8 @@
 
             <div class="field">
               <label>Select Firmware Version</label>
-              <select id="firmwareSelect">
-                <option value="">Loading available versions...</option>
+              <select id="firmwareSelect" disabled>
+                <option value="">No firmware versions available</option>
               </select>
             </div>
 
