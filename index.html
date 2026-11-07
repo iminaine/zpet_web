@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>VPet Device Manager</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+    
+    :root {
+      --ink: #1b2926;
+      --muted: #64736d;
+      --line: #c9d1c9;
+      --paper: #e8eee8;
+      --panel: #fbfcf8;
+      --green: #2e7158;
+      --green-dark: #1f503e;
+      --copper: #bd6443;
+      --blue: #38738c;
+      --blue-light: #d4e4ed;
+      --error: #a13d33;
+      --warn: #d4962a;
+    }
+    
+    * { box-sizing: border-box; }
+    
+    body {
+      margin: 0;
+      min-width: 320px;
+      min-height: 100vh;
+      color: var(--ink);
+      background: var(--paper);
+      background-image: linear-gradient(135deg, rgba(46,113,88,.08) 25%, transparent 25%), linear-gradient(315deg, rgba(56,115,140,.06) 25%, transparent 25%);
+      background-size: 32px 32px;
+      font-family: "DM Sans", sans-serif;
+      line-height: 1.6;
+    }
+    
+    button, input, select { font: inherit; letter-spacing: inherit; }
+    
+    .masthead {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 18px max(20px, calc((100vw - 1200px) / 2));
+      color: #f8faf6;
+      background: var(--ink);
+      border-bottom: 4px solid var(--copper);
+    }
+    
+    .mark {
+      width: 40px;
+      height: 40px;
+      display: grid;
+      place-items: center;
+      border: 1px solid #79988a;
+      color: #a4d6be;
+      font: 600 19px "Space Grotesk", sans-serif;
+    }
+    
+    .masthead h1 {
+      margin: 0;
+      font: 600 20px "Space Grotesk", sans-serif;
+    }
+    
+    .masthead p {
+      margin: 2px 0 0;
+      color: #b5c5bd;
+      font: 11px "DM Mono", monospace;
+    }
+    
+    main {
+      width: min(1200px, calc(100% - 32px));
+      margin: 24px auto 50px;
+    }
+    
+    .toolbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    
+    .connection {
+      margin-left: auto;
+      color: var(--muted);
+      font: 12px "DM Mono", monospace;
+      padding: 8px 12px;
+      background: var(--panel);
+      border: 1px solid var(--line);
+    }
+    
+    .connection.connected {
+      border-color: var(--green);
+      color: var(--green);
+    }
+    
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+    
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      box-shadow: 0 2px 8px rgba(27,41,38,.08);
+    }
+    
+    .panel-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-height: 44px;
+      padding: 12px 15px;
+      border-bottom: 1px solid var(--line);
+      background: #fdfef9;
+    }
+    
+    .panel-head h2 {
+      margin: 0;
+      font: 600 14px "Space Grotesk", sans-serif;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .panel-body {
+      padding: 16px;
+    }
+    
+    .pet-name {
+      font: 600 28px "Space Grotesk", sans-serif;
+      word-wrap: break-word;
+    }
+    
+    .pet-species {
+      margin-top: 4px;
+      color: var(--muted);
+      font: 11px "DM Mono", monospace;
+      text-transform: uppercase;
+    }
+    
+    .stat-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px 12px;
+      margin-top: 16px;
+    }
+    
+    .stat {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+      border-top: 1px solid #e4e9e2;
+      font-size: 12px;
+    }
+    
+    .stat strong {
+      font: 500 11px "DM Mono", monospace;
+      color: var(--muted);
+      text-transform: uppercase;
+    }
+    
+    .stat-value {
+      font: 600 12px "Space Grotesk", sans-serif;
+    }
+    
+    .field {
+      display: grid;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+    
+    label {
+      color: var(--muted);
+      font: 11px "DM Mono", monospace;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    input[type="text"],
+    input[type="url"],
+    input[type="file"],
+    select {
+      width: 100%;
+      min-height: 38px;
+      padding: 8px 10px;
+      border: 1px solid #aeb9b1;
+      border-radius: 2px;
+      color: var(--ink);
+      background: #fff;
+      font-size: 12px;
+    }
+    
+    input:focus,
+    select:focus {
+      outline: 2px solid rgba(56,115,140,.35);
+      outline-offset: 1px;
+    }
+    
+    .button-group {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 8px;
+    }
+    
+    .button {
+      min-height: 38px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 0 14px;
+      border: 1px solid #9aaba0;
+      border-radius: 2px;
+      color: var(--ink);
+      background: var(--panel);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    
+    .button:hover:not(:disabled) {
+      background: #e9f0e9;
+    }
+    
+    .button.primary {
+      border-color: var(--green);
+      color: #fff;
+      background: var(--green);
+    }
+    
+    .button.primary:hover:not(:disabled) {
+      background: var(--green-dark);
+    }
+    
+    .button.secondary {
+      border-color: var(--copper);
+      color: var(--copper);
+    }
+    
+    .button.secondary:hover:not(:disabled) {
+      background: rgba(189,100,67,.08);
+    }
+    
+    .button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    .hint {
+      margin: 0 0 14px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    
+    .status {
+      min-height: 20px;
+      margin-top: 12px;
+      padding: 8px 10px;
+      color: var(--muted);
+      font: 12px "DM Mono", monospace;
+      word-wrap: break-word;
+      background: transparent;
+      border-radius: 2px;
+    }
+    
+    .status.success {
+      color: var(--green);
+      background: rgba(46,113,88,.08);
+      border-left: 2px solid var(--green);
+      padding-left: 8px;
+    }
+    
+    .status.error {
+      color: var(--error);
+      background: rgba(161,61,51,.08);
+      border-left: 2px solid var(--error);
+      padding-left: 8px;
+    }
+    
+    .status.warn {
+      color: var(--warn);
+      background: rgba(212,150,42,.08);
+      border-left: 2px solid var(--warn);
+      padding-left: 8px;
+    }
+    
+    .progress-bar {
+      height: 6px;
+      margin-top: 12px;
+      background: #dce4dc;
+      border-radius: 1px;
+      overflow: hidden;
+    }
+    
+    .progress-bar span {
+      display: block;
+      width: 0%;
+      height: 100%;
+      background: var(--green);
+      transition: width 0.12s linear;
+    }
+    
+    .progress-text {
+      margin-top: 6px;
+      font: 11px "DM Mono", monospace;
+      color: var(--muted);
+    }
+    
+    .security-box {
+      margin-top: 16px;
+      padding: 12px 14px;
+      border-left: 3px solid var(--blue);
+      background: var(--blue-light);
+      color: #274a56;
+      font-size: 11px;
+      line-height: 1.6;
+    }
+    
+    .event-list {
+      margin-top: 12px;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+    
+    .event-item {
+      padding: 8px;
+      margin-bottom: 8px;
+      background: #f8faf6;
+      border: 1px solid var(--line);
+      border-radius: 2px;
+      font-size: 11px;
+    }
+    
+    .event-date {
+      color: var(--muted);
+      font: 10px "DM Mono", monospace;
+    }
+    
+    .event-type {
+      color: var(--blue);
+      font: 600 11px "Space Grotesk", sans-serif;
+      margin-top: 2px;
+    }
+    
+    .event-detail {
+      color: var(--ink);
+      margin-top: 2px;
+      font-size: 10px;
+    }
+    
+    .tabs {
+      display: flex;
+      border-bottom: 1px solid var(--line);
+      gap: 0;
+    }
+    
+    .tab-button {
+      flex: 1;
+      min-height: 44px;
+      padding: 0 14px;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font: 12px "DM Mono", monospace;
+      text-transform: uppercase;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+    
+    .tab-button.active {
+      color: var(--ink);
+      border-bottom-color: var(--green);
+    }
+    
+    .tab-content {
+      display: none;
+    }
+    
+    .tab-content.active {
+      display: block;
+    }
+    
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+    
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 12px;
+      opacity: 0.3;
+    }
+    
+    @media (max-width: 900px) {
+      .layout {
+        grid-template-columns: 1fr;
+      }
+      
+      .masthead {
+        padding: 14px 16px;
+      }
+      
+      .stat-grid {
+        grid-template-columns: 1fr;
+      }
+      
+      .button-group {
+        grid-template-columns: 1fr;
+      }
+    }
+    
+    [hidden] {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <header class="masthead">
+    <div class="mark">VP</div>
+    <div>
+      <h1>VPet Device Manager</h1>
+      <p>Connect your device via USB to manage and update firmware</p>
+    </div>
+  </header>
+
+  <main>
+    <div class="toolbar">
+      <button id="connect" class="button primary">⚡ Connect Device</button>
+      <button id="disconnect" class="button" hidden>Disconnect</button>
+      <span id="connection" class="connection">Not connected</span>
+    </div>
+
+    <div id="notConnected" class="panel">
+      <div class="panel-body">
+        <div class="empty-state">
+          <div class="empty-state-icon">🎮</div>
+          <p><strong>Connect a VPet device to get started</strong></p>
+          <p class="hint">Use the "Connect Device" button above to establish a USB connection to your VPet.</p>
+        </div>
+      </div>
+    </div>
+
+    <div id="connected" hidden class="layout">
+      <!-- LEFT COLUMN: Pet Details & Events -->
+      <section>
+        <!-- Pet Details Panel -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2>📊 Pet Details</h2>
+          </div>
+          <div class="panel-body">
+            <div id="petDetails">
+              <div id="petName" class="pet-name">-</div>
+              <div id="petSpecies" class="pet-species">-</div>
+              <div id="petStats" class="stat-grid"></div>
+            </div>
+            <div id="detailStatus" class="status"></div>
+          </div>
+        </div>
+
+        <!-- Device Info Panel -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2>🔧 Device Info</h2>
+          </div>
+          <div class="panel-body">
+            <div class="stat">
+              <strong>Device ID:</strong>
+              <span id="deviceId" style="font: 10px 'DM Mono', monospace; word-break: break-all;">-</span>
+            </div>
+            <div class="stat">
+              <strong>Current FW:</strong>
+              <span id="currentFw">-</span>
+            </div>
+            <div class="stat">
+              <strong>Latest FW:</strong>
+              <span id="latestFw">-</span>
+            </div>
+            <div id="deviceStatus" class="status"></div>
+          </div>
+        </div>
+
+        <!-- Events Panel -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2>📅 Recent Events</h2>
+          </div>
+          <div class="panel-body">
+            <button id="refreshEvents" class="button" style="width: 100%; margin-bottom: 12px;">Refresh Events</button>
+            <div id="eventList" class="event-list"></div>
+            <div id="eventStatus" class="status"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Controls & Firmware -->
+      <section>
+        <!-- Pet Management Panel -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2>✏️ Manage Pet</h2>
+          </div>
+          <div class="panel-body">
+            <div class="field">
+              <label>Pet Name</label>
+              <input type="text" id="petNameInput" placeholder="Enter new pet name">
+              <button id="savePetName" class="button primary" style="width: 100%;">Save Pet Name</button>
+              <div id="petNameStatus" class="status"></div>
+            </div>
+
+            <div class="field" style="margin-top: 20px;">
+              <label>Owner Name</label>
+              <input type="text" id="ownerNameInput" placeholder="Enter your name">
+              <button id="saveOwnerName" class="button primary" style="width: 100%;">Save Owner Name</button>
+              <div id="ownerNameStatus" class="status"></div>
+            </div>
+
+            <div class="button-group" style="margin-top: 20px;">
+              <button id="backupBtn" class="button secondary">💾 Backup</button>
+              <button id="restoreBtn" class="button secondary">📂 Restore</button>
+            </div>
+            <input type="file" id="restoreFile" accept=".json" hidden>
+            <div id="backupStatus" class="status"></div>
+          </div>
+        </div>
+
+        <!-- Firmware Update Panel -->
+        <div class="panel">
+          <div class="panel-head">
+            <h2>🔄 Firmware Update</h2>
+          </div>
+          <div class="panel-body">
+            <p class="hint">Download and install the latest firmware for your VPet device.</p>
+
+            <div class="field">
+              <label>Select Firmware Version</label>
+              <select id="firmwareSelect">
+                <option value="">Loading available versions...</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label>Firmware File (or Select Above)</label>
+              <input type="file" id="firmwareFile" accept=".bin,.hex,.uf2">
+              <small class="hint">Supported formats: .bin, .hex, .uf2</small>
+            </div>
+
+            <div class="security-box">
+              ⚠️ <strong>Important:</strong> Do not disconnect your device or close this window during the update. The process takes 2-3 minutes.
+            </div>
+
+            <button id="updateBtn" class="button primary" style="width: 100%; margin-top: 14px;">Start Firmware Update</button>
+
+            <div class="progress-bar" id="updateProgress" hidden>
+              <span id="updateProgressBar"></span>
+            </div>
+            <div id="updateProgressText" class="progress-text" hidden></div>
+            <div id="updateStatus" class="status"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <script src="app.js"></script>
+  <script src="ui.js"></script>
+</body>
+</html>
