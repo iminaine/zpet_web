@@ -230,14 +230,6 @@ class VPetManager {
       console.error('Failed to reset pet:', error);
       throw error;
     }
-        newName: newName
-      });
-      
-      return true;
-    } catch (error) {
-      console.error('Failed to update pet name:', error);
-      throw error;
-    }
   }
 
   async updateOwnerName(newName) {
