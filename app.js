@@ -51,19 +51,20 @@ class VPetManager {
     try {
       // Send command
       await writer.write(encoder.encode(cmd + '\r\n'));
-      
-      // Read response with timeout
-      const response = await Promise.race([
-        this.readUntilPrompt(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Command timeout')), timeout)
-        )
-      ]);
-      
-      return response;
+      await writer.ready;
     } finally {
       writer.releaseLock();
     }
+    
+    // NOW read response (after writer is released)
+    const response = await Promise.race([
+      this.readUntilPrompt(),
+      new Promise((_, reject) => 
+        setTimeout(() => reject(new Error('Command timeout')), timeout)
+      )
+    ]);
+    
+    return response;
   }
 
   async readUntilPrompt() {
